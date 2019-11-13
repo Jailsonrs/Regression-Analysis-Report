@@ -1,0 +1,65 @@
+% This is the first draft of MMU Faculty of Engineering Cryptography and Security systems assignment
+% for 18/19 Trimester 2
+% Chia Jason 1161300548
+% Hor Sui Lyn 1161300122
+%
+\documentclass[runningheads]{llncs}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{hyphenat}
+\hyphenation{mate-mática recu-perar}
+%
+\begin{document}
+% title
+\title{Modelando dados de incidência de câncer de próstata}
+%\thanks{Supported by Mult x.} % if we want to thank someone/org.
+%
+% authors
+\author{Jailson Rodrigues}
+%
+\authorrunning{C. Jason and H. Sui Lyn}
+% First names are abbreviated in the running head.
+%
+\institute{{Multimedia University, Cyberjaya 63100, Malaysia}}
+%
+\maketitle              % typeset the header of the contribution
+%
+\begin{abstract}
+The attendance system at Multimedia University has evolved from signing on papers to a QR code based attendance system, whereby students were to scan the QR code projected by a lecturer to register their attendance for the class. This paper examines the approach of a QR code based attendance system and proposes a method to exploit the oversight of it's implementation. 
+%
+\keywords{Attendance System  \and Parameter tampering \and Exploit discovery.}
+\end{abstract}
+%
+%
+%
+\section{Introdução}
+\subsection{Quick Response (QR) Code based attendance system}
+Um grupo de pesquisadores de um determinado centro médico universitário está interessado em estudar a associação entre antígeno específico da próstata (PSA) e algumas medidas clínicas prognósticas em homens com câncer de próstata em estado avançado. Os dados foram coletados de 97 homens que estavam prestes a sofrer prostatectomias radicais. O conjunto de dados possui um número identificando o paciente e informações a respeito de 8 medidas clínicas.
+
+
+%
+%
+\section{Descrição dos dados}
+\subsection{Cross-Site Request Forgery} 
+\begin{table}[!htp]
+\begin{tabular}{c|ll}
+\hline
+Número da variável & Nome da variável               & Descrição                                                                                                                     \\ \hline
+1                  & Número de identificação        & 1-97                                                                                                                          \\
+2                  & Nível PSA                      & \begin{tabular}[c]{@{}l@{}}Nível sérico de antígeno prostático específico\\   (mg/ml)\end{tabular}                            \\
+3                  & Volume câncer                  & Estimativa do volume do câncer (cc)                                                                                           \\
+4                  & Peso                           & Peso da próstata (gm)                                                                                                         \\
+5                  & Idade                          & Idade do paciente (anos)                                                                                                      \\
+6                  & Hiperplasia prostática benigna & Quantidade de hiperplasia prostática benigna (cm²)                                                                            \\
+7                  & Invasão da vesícula seminal    & Presença ou ausência (1 se sim; 0 se não)                                                                                     \\
+8                  & Penetração capsular            & Grau de penetração capsular (cm)                                                                                              \\
+9                  & Escore Gleason                 & \begin{tabular}[c]{@{}l@{}}Grau patologicamente\\ determinado da doença \\(escores altos indicam pior prognóstico)
+\end{tabular}
+\end{tabular}
+\end{table}
+%
+%
+
+\end{document}

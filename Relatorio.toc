@@ -1,0 +1,10 @@
+\babel@toc {portuguese}{}
+\contentsline {title}{Modelando dados de incid\IeC {\^e}ncia de c\IeC {\^a}ncer de pr\IeC {\'o}stata}{1}
+\authcount {1}
+\contentsline {author}{Jailson Rodrigues}{1}
+\contentsline {section}{\numberline {1}Introdu\IeC {\c c}\IeC {\~a}o}{2}
+\contentsline {subsection}{\numberline {1.1}Quick Response (QR) Code based attendance system}{2}
+\contentsline {section}{\numberline {2}An\IeC {\'a}lise Descritiva}{2}
+\contentsline {section}{\numberline {3}Infer\IeC {\^e}ncia e Modelagem}{2}
+\contentsline {subsection}{\numberline {3.1}Selec\IeC {\c c}\IeC {\~a}o de Vari\IeC {\'a}veis}{2}
+\contentsline {section}{\numberline {4}Diagn\IeC {\'o}stico }{2}

@@ -1,0 +1,160 @@
+% This is the first draft of MMU Faculty of Engineering Cryptography and Security systems assignment
+% for 18/19 Trimester 2
+% Chia Jason 1161300548
+% Hor Sui Lyn 1161300122
+%
+
+
+
+\documentclass[runningheads]{llncs}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+\usepackage[portuguese]{babel}
+\usepackage{float}
+\usepackage{hyphenat}
+\hyphenation{mate-mática recu-perar}
+%
+\begin{document}
+% title
+\title{Modelando dados de incidência de câncer de próstata}
+%\thanks{Supported by Mult x.} % if we want to thank someone/org.
+%
+% authors
+\author{Jailson Rodrigues de souza}
+%
+
+% First names are abbreviated in the running head.
+%
+\institute{{Universidade Federal do Ceará, Fortaleza, 63100, Ceará, Brasil}}
+%
+\maketitle              % typeset the header of the contribution
+%
+
+\begin{abstract}
+The attendance system at Multimedia University has evolved from signing on papers to a QR code based attendance system, whereby students were to scan the QR code projected by a lecturer to register their attendance for the class. This paper examines the approach of a QR code based attendance system and proposes a method to exploit the oversight of it's implementation. 
+%
+\keywords{Modelos de Regressão  \and Linear \and Câncer}
+\end{abstract}
+%
+
+%
+\section{Introdução}
+Um grupo de pesquisadores de um determinado centro médico universitário está interessado em estudar a associação entre antígeno específico da próstata (PSA) e algumas medidas clínicas prognósticas em homens com câncer de próstata em estado avançado. Os dados foram coletados de 97 homens que estavam prestes a sofrer prostatectomias radicais. O conjunto de dados possui um número identificando o paciente e informações a respeito de 8 medidas clínicas.
+
+
+%
+%
+\section{Análise Descritiva}
+<<>>=
+library(dplyr)
+library(ggplot2)
+library(data.table)
+library(rlang)
+library(purrr)
+library("cowplot")
+library(MASS)
+library("kableExtra")
+@
+
+\small{\begin{table}[H]
+\caption{Descriçã das variáveis utilizadas no estudo}
+\begin{tabular}{c|ll}
+\hline \hline
+Número da variável & Nome da variável               & Descrição                                                                                                                     \\ \hline
+1                  & Número de identificação        & 1-97                                                                                                                          \\
+2                  & Nível PSA                      & \begin{tabular}[c]{@{}l@{}}Nível sérico de antígeno prostático específico\\   (mg/ml)\end{tabular}                            \\
+3                  & Volume câncer                  & Estimativa do volume do câncer (cc)                                                                                           \\
+4                  & Peso                           & Peso da próstata (gm)                                                                                                         \\
+5                  & Idade                          & Idade do paciente (anos)                                                                                                      \\
+6                  & Hiperplasia prostática benigna & Quantidade de hiperplasia prostática benigna (cm²)                                                                            \\
+7                  & Invasão da vesícula seminal    & Presença ou ausência (1 se sim; 0 se não)                                                                                     \\
+8                  & Penetração capsular            & Grau de penetração capsular (cm)                                                                                              \\
+9                  & Escore Gleason                 & \begin{tabular}[c]{@{}l@{}}Grau patologicamente\\ determinado da doença \\(escores altos indicam pior prognóstico)\\ 
+\end{tabular}\\ \hline \hline
+\end{tabular}
+\\ \footnotesize Fonte: U.S. Census, 2010
+
+\end{table}}
+
+Vamos começar plotando as correlações marginais para buscar indicios que nos levem a encontrar fatores iniciais para a analise  
+<<echo=FALSE>>=
+library(knitr)
+knitr::opts_chunk$set(echo=FALSE, message=FALSE)
+@
+<<>>=
+tema <- ggplot2::theme(panel.background = element_rect(fill="whitesmoke"),
+              plot.background = element_rect(fill="whitesmoke"),
+              panel.grid = element_blank(),
+              legend.position = "none",
+              text = element_text(colour="black"),
+        axis.line = element_line(lineend = "round",
+                                 colour="whitesmoke",
+                                 arrow = grid::arrow(type = "closed",
+                                                     length = unit(0.06,"in"))))
+@
+
+<<>>=
+setwd("~/Área de Trabalho/relatorio regressao")
+dados <- data.table::fread("./data/Próstata.txt")
+
+p = vector(mode = "list", length = length(colnames(dados)))
+for(i in 1:length(colnames(dados))){
+  dados %>%
+    ggplot(aes_string(colnames(dados)[i], "V2"))+
+    geom_point() -> p[[i]]
+}
+
+cowplot::plot_grid(plotlist = p)
+
+dados %>% group_by(V5) %>% 
+          summarise(count=n()) %>%
+          arrange(desc(count))%>%
+  ggplot(aes(V5,count,label=count))+
+  geom_col(aes(fill=count))+
+  scale_fill_viridis_c(direction=1,option="magma",begin = 0.4,end=0.1)+
+  tema+
+  geom_text(aes(label=count),vjust=-0.5,colour="black")+
+  labs(title="Distribuição de frequência para a idade dos pacientes",
+       x="Idade", y = "Contagem") ->p1
+
+cut(dados$V5,breaks =8)%>%table() %>% data.frame() %>% 
+  ggplot(aes(.,Freq))+geom_col(fill="grey60",alpha=0.7)+tema+
+  labs(title="Histograma para as idades dos pacientes",x="Faixa etária",y="Frequência")+
+  geom_text(aes(label=Freq),vjust=-0.5,fontface=1,colour="black")+
+  theme(axis.text.x = element_text(angle=45,colour="black",hjust = 1,size=16)) -> p2
+pp = list(p1,p2)
+@
+<<fig.width=10,fig.height=5>>=
+cowplot::plot_grid(plotlist=pp)
+@
+
+%
+\section{Inferência e Modelagem}%
+<<>>=
+
+lm(V2~V1+V3+V4+V5+V6+V7+V8+V9,dados) %>% anova() %>% 
+  kable("latex", booktabs = F) %>%
+  kable_styling(position = "center")
+  
+
+
+@
+
+\subsection{Selecção de Variáveis}
+\section{Diagnóstico }
+\section{Conclusões}
+
+\begin{thebibliography}{9}
+\newpage
+\bibitem{lamport94}
+  Leslie Lamport,
+  \textit{\LaTeX: a document preparation system},
+  Addison Wesley, Massachusetts,
+  2nd edition,
+  1994.
+
+\end{thebibliography}
+\newpage
+\end{document}
