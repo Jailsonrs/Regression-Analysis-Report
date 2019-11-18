@@ -1,51 +1,30 @@
-% This is the first draft of MMU Faculty of Engineering Cryptography and Security systems assignment
-% for 18/19 Trimester 2
-% Chia Jason 1161300548
-% Hor Sui Lyn 1161300122
-%
-
-
-
 \documentclass[runningheads]{llncs}
 \usepackage{graphicx}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage{xcolor}
-\usepackage[portuguese]{babel}
+\usepackage[table]{xcolor} 
+\usepackage{booktabs}
 \usepackage{float}
+\usepackage{amsmath}
 \usepackage{hyphenat}
 \hyphenation{mate-mática recu-perar}
-%
+
 \begin{document}
 % title
-\title{Modelando dados de incidência de câncer de próstata}
-%\thanks{Supported by Mult x.} % if we want to thank someone/org.
-%
-% authors
-\author{Jailson Rodrigues de souza}
-%
-
-% First names are abbreviated in the running head.
-%
-\institute{{Universidade Federal do Ceará, Fortaleza, 63100, Ceará, Brasil}}
-%
-\maketitle              % typeset the header of the contribution
-%
-
-\begin{abstract}
-The attendance system at Multimedia University has evolved from signing on papers to a QR code based attendance system, whereby students were to scan the QR code projected by a lecturer to register their attendance for the class. This paper examines the approach of a QR code based attendance system and proposes a method to exploit the oversight of it's implementation. 
-%
-\keywords{Modelos de Regressão  \and Linear \and Câncer}
-\end{abstract}
-%
-
-%
+\title{Modelando dados de incidência de câncer de próstata e fatores que influenciam no Antígeno Prostáico Específico}
+\author{Jailson Rodrigues de souza, 364214}
+\institute{{Universidade Federal do Ceará, Fortaleza, Ceará, Brasil}}
+\maketitle            
+%%----------------------------------------------------------------
 \section{Introdução}
+
 Um grupo de pesquisadores de um determinado centro médico universitário está interessado em estudar a associação entre antígeno específico da próstata (PSA) e algumas medidas clínicas prognósticas em homens com câncer de próstata em estado avançado. Os dados foram coletados de 97 homens que estavam prestes a sofrer prostatectomias radicais. O conjunto de dados possui um número identificando o paciente e informações a respeito de 8 medidas clínicas.
-
-
-%
-%
+\newpage
+<<echo=FALSE>>=
+library(knitr)
+knitr::opts_chunk$set(echo=FALSE, message=FALSE)
+@
+%%----------------------------------------------------------------
 \section{Análise Descritiva}
 <<>>=
 library(dplyr)
@@ -56,62 +35,101 @@ library(purrr)
 library("cowplot")
 library(MASS)
 library("kableExtra")
+library(olsrr)
+library("Hmisc")
+
+
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+
+@
+
+%%----------------------------------------------------------------
+<<warning=FALSE>>=
+##setwd("./Regression-Analysis-Report")
+dados <- data.table::fread("./data/Próstata.txt")
+##dados <- dados[,-c(1)]
+colnames(dados) <- c("index",
+                     "PSA",
+                     "volume",
+                     "peso",
+                     "idade",
+                     "hiperplasia",
+                     "invasao_vesicular",
+                     "penetracao_capsular",
+                     "escore_gleason")
 @
 
 \small{\begin{table}[H]
-\caption{Descriçã das variáveis utilizadas no estudo}
+\caption{Descrição das variáveis utilizadas no estudo}
 \begin{tabular}{c|ll}
 \hline \hline
 Número da variável & Nome da variável               & Descrição                                                                                                                     \\ \hline
 1                  & Número de identificação        & 1-97                                                                                                                          \\
-2                  & Nível PSA                      & \begin{tabular}[c]{@{}l@{}}Nível sérico de antígeno prostático específico\\   (mg/ml)\end{tabular}                            \\
+2                  & Nível PSA                      & \begin{tabular}[c]{@{}l@{}}Nível sérico de antígeno \\ prostático específico\\   (ng/ml)\end{tabular}                            \\
 3                  & Volume câncer                  & Estimativa do volume do câncer (cc)                                                                                           \\
 4                  & Peso                           & Peso da próstata (gm)                                                                                                         \\
 5                  & Idade                          & Idade do paciente (anos)                                                                                                      \\
-6                  & Hiperplasia prostática benigna & Quantidade de hiperplasia prostática benigna (cm²)                                                                            \\
+6                  & Hiperplasia prostática benigna & Quantidade de hiperplasia  prostática benigna (cm²)                                                                            \\
 7                  & Invasão da vesícula seminal    & Presença ou ausência (1 se sim; 0 se não)                                                                                     \\
 8                  & Penetração capsular            & Grau de penetração capsular (cm)                                                                                              \\
 9                  & Escore Gleason                 & \begin{tabular}[c]{@{}l@{}}Grau patologicamente\\ determinado da doença \\(escores altos indicam pior prognóstico)\\ 
 \end{tabular}\\ \hline \hline
 \end{tabular}
-\\ \footnotesize Fonte: U.S. Census, 2010
+\\ 
+<<warning=FALSE>>=
+dados1 <- melt(dados, id.vars=c("index"))  
+dados1 %>% group_by(variable) %>% summarise(Media = mean(value),
+                                            DesvioPadrao = sd(value),
+                                            CV=(DesvioPadrao/Media),
+                                            qrt1=quantile(value,0.25),
+                                            qrt2=quantile(value,0.50),
+                                            qrt3=quantile(value,0.75),
+                                            Minimo=min(value),
+                                            Maximo=max(value)) %>% mutate_at(2:9,round,2)%>%
+  kable(format = "latex", booktabs=T,align ="c",caption = "Estatísticas descritivas para as variáveis do estudo") %>%
+  kable_styling(position = "center", font_size = 9, latex_options = "striped")
+
+@
 
 \end{table}}
 
 Vamos começar plotando as correlações marginais para buscar indicios que nos levem a encontrar fatores iniciais para a analise  
-<<echo=FALSE>>=
-library(knitr)
-knitr::opts_chunk$set(echo=FALSE, message=FALSE)
-@
+
 <<>>=
 tema <- ggplot2::theme(panel.background = element_rect(fill="whitesmoke"),
               plot.background = element_rect(fill="whitesmoke"),
               panel.grid = element_blank(),
               legend.position = "none",
               text = element_text(colour="black"),
-        axis.line = element_line(lineend = "round",
+              axis.line = element_line(lineend = "round",
                                  colour="whitesmoke",
                                  arrow = grid::arrow(type = "closed",
                                                      length = unit(0.06,"in"))))
 @
 
 <<>>=
-setwd("~/Área de Trabalho/relatorio regressao")
-dados <- data.table::fread("./data/Próstata.txt")
 
 p = vector(mode = "list", length = length(colnames(dados)))
 for(i in 1:length(colnames(dados))){
   dados %>%
-    ggplot(aes_string(colnames(dados)[i], "V2"))+
+    ggplot(aes_string(colnames(dados)[i], "PSA"))+
     geom_point() -> p[[i]]
 }
 
 cowplot::plot_grid(plotlist = p)
 
-dados %>% group_by(V5) %>% 
+dados %>% group_by(idade) %>% 
           summarise(count=n()) %>%
           arrange(desc(count))%>%
-  ggplot(aes(V5,count,label=count))+
+  ggplot(aes(idade,count,label=count))+
   geom_col(aes(fill=count))+
   scale_fill_viridis_c(direction=1,option="magma",begin = 0.4,end=0.1)+
   tema+
@@ -119,42 +137,244 @@ dados %>% group_by(V5) %>%
   labs(title="Distribuição de frequência para a idade dos pacientes",
        x="Idade", y = "Contagem") ->p1
 
-cut(dados$V5,breaks =8)%>%table() %>% data.frame() %>% 
+cut(dados$idade,breaks = 8) %>% table() %>% data.frame() %>% 
   ggplot(aes(.,Freq))+geom_col(fill="grey60",alpha=0.7)+tema+
   labs(title="Histograma para as idades dos pacientes",x="Faixa etária",y="Frequência")+
   geom_text(aes(label=Freq),vjust=-0.5,fontface=1,colour="black")+
   theme(axis.text.x = element_text(angle=45,colour="black",hjust = 1,size=16)) -> p2
 pp = list(p1,p2)
 @
+\vspace{-0.05cm}
+Embora as correlações marginais entre o PSA  e as outras variáveis não seja elevado, estudos realizados anteriormente
+constataram que o PSA varia quase linearmente com a idade e o o volume do câncer. \newpage
 <<fig.width=10,fig.height=5>>=
 cowplot::plot_grid(plotlist=pp)
 @
-
-%
-\section{Inferência e Modelagem}%
 <<>>=
+library("PerformanceAnalytics")
+my_data <- dados[, 2:9]
+chart.Correlation(my_data, histogram=TRUE, pch=19)
+@
+\newpage
+No gráfico acima:
+A distribuição empírica de cada variável é mostrada na diagona.
+Abaixo da diagonal: Os diagramas de dispersão com uma curva ajustada.
+Acima da diagonal estão os valores das correlaçõpes conjuntamente com seus níveis de significância:
+Cada nível de significância está associado a uma certa quantidade de estrelas: i.e:$$\{(0, "***"),(0.001,"***"), (0.01,"**"), (0.05,"*"), (0.1,"."), (1,""))   \}$$
 
-lm(V2~V1+V3+V4+V5+V6+V7+V8+V9,dados) %>% anova() %>% 
-  kable("latex", booktabs = F) %>%
-  kable_styling(position = "center")
+O boxplot abaixo mostra O nível de PSA para cada escore de Gleason.
+Podemos observar que pacientes com Pontuação 8 no escore de Gleason possuem um PSA muito alto. De acordo com o instituto Oncoguia, se o nível do PSA é muito alto, a doença provavelmente está disseminada.
+\\
+\\
+
+<<fig.width=7,fig.height=4>>=
+dados %>%
+  ggplot(aes(dados$escore_gleason,PSA,group=factor(escore_gleason)))+
+  geom_boxplot()+tema+labs(title="Distribuições do PSA para cada nível de Escore de Gleason", x="Escore de Gleason", y="PSA  (ng/ml)")+
+  scale_x_continuous(breaks=c(6,7,8))+
+  scale_y_continuous(breaks=seq(0,300,20))+
+  annotate(geom="text",x=6.5,y=170,label="Pontuação 8 ou maior (G3): Células muito irregulares, invasor,\n câncer de alto grau. Mau prognóstico por maior risco de\n complicações e metástases, a próstata deve ser removida.",size=2.9)+
+  annotate(geom="text",x=6.5,y=230,label="Pontuação 5 a 7 (G2): Células moderadamente diferenciadas,\n prognóstico menos previsível. O paciente pode-se decidir se\n quer remover a próstata para evitar complicações ou não.",size=2.9)
+@
+<<fig.width=7,fig.height=4>>=
+dados %>% ggplot(aes(x=dados$invasao_vesicular,y=PSA,group=invasao_vesicular))+geom_boxplot()+tema+labs(x="Invasao Vesicula Seminal")+scale_x_continuous(breaks=c(0,1))
+@
+Dados os boxplots acima, podemos perceber que em pacientes que tiveram invasão vesicular, a mediana do nível de PSA é maior.
+
+<<>>=
+dados %>% group_by(invasao_vesicular)%>% summarise(Mediana_PSA=quantile(PSA,0.5)) %>%
+  kable("latex", booktabs = T,caption = "Mediana de PSA entre pacientes com Invasão Vesícular (1) e sem (0).") %>%
+  kable_styling(position = "center",latex_options = "striped")
+@
+
+
+<<fig.width=6,fig.height=4>>=
+dados %>% group_by(invasao_vesicular,escore_gleason) %>% summarise(c = mean(PSA)) %>%
+  ggplot(aes(x=escore_gleason,y=c,group=invasao_vesicular))+
+  geom_path(aes(lty=factor(invasao_vesicular)))+
+  tema+
+  theme(legend.position = "top",
+        legend.box.background = element_rect(colour="grey",fill="red"),
+        legend.background = element_rect(fill="grey96"))+
+  geom_point()+
+  scale_x_continuous(breaks=c(6,7,8))+
+  labs(x="Escore de Gleason",  
+            y=expr("Média PSA"),
+       lty="Invasão da Vesicula Seminal")
+@
+
+\section{Inferência e Modelagem}
+
+Como não há indícios premiliminares de variáveis preditoras eficientes para a modelagem linear para o PSA, 
+iremos ajustar, a princípio, um modelo completo, ou seja, com todas as variáveis: 
+
+\begin{equation}
+ V2 = \beta_0 V1 ... + \beta_9 V9 
+\end{equation}
+<<>>=
+modelo_completo <- lm(PSA~dados$volume+
+                          dados$peso+
+                          dados$idade+
+                          dados$hiperplasia+
+                          dados$invasao_vesicular+
+                          dados$penetracao_capsular+
+                          dados$escore_gleason,
+                      dados) 
+
+res2 <- rcorr(as.matrix(dados[,1:9]))
+flattenCorrMatrix(res2$r, res2$P) %>%
+  mutate_at(3:3,round,3) %>%
+  kable("latex", booktabs = T,caption = "Correlações entre todas as variáveis explicativas e seus respectivos valores p.") %>%
+  kable_styling(position = "center",latex_options = "striped")
+@
+
+Os fatores de inflação de variância em conjunto com as correlações entre as variáveis explicativas
+(VIF) não sao elevados e, portanto, nao temos indícios de multicolinearidade.
+<<>>=
+ols_vif_tol(modelo_completo)%>%
+  mutate_at(2:3,round,2)%>%
+  kable("latex", booktabs = T, align=c(rep('c',times=3)),caption = "Tolerância e VIF") %>%
+  kable_styling(position = "center", latex_options = "striped")
   
-
+lm(PSA~dados$volume+
+     dados$peso+
+     dados$idade+
+     dados$hiperplasia+
+     dados$invasao_vesicular+
+     dados$penetracao_capsular+
+     dados$escore_gleason,
+   dados)  %>% anova() %>%
+  mutate_at(2:5,round,2) %>%
+  kable("latex", booktabs = T) %>%
+  kable_styling(position = "center",latex_options = "striped")
 
 @
 
 \subsection{Selecção de Variáveis}
+
+<<echo=FALSE>>=
+
+modelo_reduzido <- lm(formula = PSA ~ volume+factor(invasao_vesicular), data = dados)
+summary(modelo_reduzido)
+@
+
+
+<<echo=FALSE>>=
+
+@
+
+
+<<echo=FALSE>>=
+anova(modelo_completo) %>% mutate_at(2:3,round,2)%>%
+  mutate_at(2:5,round,2)%>%
+  kable("latex", booktabs = T, align=c(rep('c',times=3)), 
+        caption = "Tabela ANOVA para o modelo completo") %>%
+  kable_styling(position = "center", latex_options = "striped")
+
+summary(modelo_reduzido) -> suma
+suma$coefficients %>% data.frame() %>%
+  mutate_at(2:3,round,2)%>%
+  kable("latex", booktabs = T, align=c(rep('c',times=3)),
+        caption = "Tabela ANOVA para o modelo completo") %>%
+  kable_styling(position = "center", latex_options = "striped")  
+
+anova(modelo_reduzido) %>% mutate_at(2:3,round,2)%>%
+  kable("latex", booktabs = T, align=c(rep('c',times=3)),
+        caption = "Tabela ANOVA para o modelo reduzido") %>%
+  kable_styling(position = "center", latex_options = "striped")  
+
+@
+Embora a idade seja um fator relevante para explicar o PSA, nossos dados não capturaram bem essa característica. Sendo assim iremos utilizar um modelo reduzido para explicar a variabilidade do PSA.
+\begin{equation}
+  E[PSA_i] = \beta_0 volume\_cancer+ \beta_1 invasao\_vesicular
+\end{equation}
 \section{Diagnóstico }
+Nesta sessão iremos realizar a anáçise de diagnóstico. A Análise de diagnóstico é importante para verificar se o modelo proposto, quando ajustado aos dados, satisfaz as suposições do modelo linear normal.
+Por mínima que seja a fulga dessas suposiçõpes, as consequências podem ser catastróficas, pois podem tornar o modelo viesado, e as estimativas não serão mais eficientes no sentido de que suas variâncias não serão as menores na classe dos estimadores BLUE.
+
+<<fig.height=4>>=
+r1=qplot(modelo_reduzido$fitted.values, dados$PSA)+
+  theme(axis.title = element_text(size=8))+geom_smooth(se = TRUE)+
+  tema+
+  labs(x="Ajustados",y="Observados")
+
+
+r3=qplot(index(modelo_reduzido$residuals),modelo_reduzido$residuals)+
+  theme(axis.title = element_text(size=8))+geom_smooth(se = TRUE)+
+  tema+
+  labs(x="Indice",y="Residuos ordinários")+geom_hline(yintercept = -2, colour="blue",lty=2,size=0.2)+geom_hline(yintercept = 2 ,colour="blue",lty=2,size=0.2)
+
+r4=qplot(modelo_reduzido$fitted.values,modelo_reduzido$residuals)+
+  theme(axis.title = element_text(size=8))+geom_smooth(se = TRUE)+
+  tema+
+  labs(x="Ajustados",y="Residuos ordinários")
+cowplot::plot_grid(plotlist = list(r1,r3,r4))
+X=as.matrix(data.frame(rep(1,97),dados$volume,dados$invasao_vesicular),97,3,97*3)
+@
+
+
+<<fig.height=4>>=
+##summary(modelo_reduzido)
+bacf <- acf(modelo_reduzido$residuals, plot = FALSE)
+parcf <- acf(modelo_reduzido$residuals,type = "partial",plot=FALSE)
+bacfdf <- with(bacf, data.frame(lag, acf))
+parcfdf <- with(parcf, data.frame(lag, acf))
+bacfdf%>% ggplot(aes(lag,acf))+geom_col(width = 0.1)+tema+geom_hline(yintercept = 0.2,colour="blue", lty=2,size=0.2)+
+  geom_hline(yintercept = -0.2,colour="blue",lty=2,size=0.2)+
+  geom_hline(yintercept = -0,colour="black",lty=1,size=0.2)+labs(title="Funcao de autocorrelação \ndos resíduos") -> acfplot
+
+
+parcfdf %>%  ggplot(aes(lag,acf))+geom_col(width = 0.1)+tema+geom_hline(yintercept = 0.2,colour="blue", lty=2,size=0.2)+
+  geom_hline(yintercept = -0.2,colour="blue",lty=2,size=0.2)+
+  geom_hline(yintercept = -0,colour="black",lty=1,size=0.2)+labs(title="Funcao de autocorrelação parcial \ndos resíduos") -> parcfplot
+
+cowplot::plot_grid(plotlist = list(acfplot,parcfplot))
+##solve(t(X)%*%X)%*%t(X)%*%dados$PSA
+@
+
+Podemos observar que a FAC para os resíduos indicam um decaimento exponencial, com duas barras ultrapassando o limite. Sugerindo, assim, que exista autocorrelação nos resíduos e que essa autocorrelação pode ser modelada por um AR(2). 
+Já, a FACP sugerem um modelo MA(1). Sendo assim, os residuos podem ser modelados por um processo ARMA(2,1).
+
+
+<<fig.height=5.5>>=
+source("./src/diagnorm.R")
+diagnorm(modelo_reduzido)
+library(car)
+source("./src/envel.R")
+envelnorm(modelo_reduzido)
+@
+
 \section{Conclusões}
+Durante o estudo foram obtidos diversos indícios de que um modelo de regressão Linear possa não ser adequado para modelar esse tipo de dados, tendo em vista que os graficos de diagnostico corroboram com essa afirmação, podemos rejeitar e propor outros modelos da mais generalizados que possam se adequar bem aos dados sem fugir das suposições.
 
-\begin{thebibliography}{9}
+Não obtante, um possivel modelo inicial que resolvi escolher é dado por:
+
+  \[
+    E(PSA|Volume, Invasao)=\begin{cases}
+                1.060+2.477 Volume+24.647, \ \text{se houve invasão da vesicula seminal}\\
+                1.060+2.477 Volume,  \ \text{Caso Contrário}
+    \end{cases}
+  \]
+  
+Ou seja, o fato de haver invasão da vesicula semina causa uma variação no intercepto de 23,25 \% no nível de PSA do paciente quando o volume do cancer é o mínimo possivel.
+
 \newpage
-\bibitem{lamport94}
-  Leslie Lamport,
-  \textit{\LaTeX: a document preparation system},
-  Addison Wesley, Massachusetts,
+\begin{thebibliography}{9}
+\bibitem{SEARLE}
+  SEARLE, Shayli R.
+  \textit{\textbf{Linear Models}},
   2nd edition,
-  1994.
+  Hoboken, N.J.: Wiley Interscience,
+  2003.
 
+\bibitem{japan}
+  AMIT GUPTA, CORINNE ARAGAKI, MOMOKAZU GOTOH, NAOYA MASUMORI, SHINICHI OHSHIMA, TAIJI TSUKAMOTO, CLAUS G. ROEHRBORN.
+  \textit{\textbf{RELATIONSHIP BETWEEN PROSTATE SPECIFIC ANTIGEN AND INDEXES OF PROSTATE VOLUME IN JAPANESE MEN}},
+The Journal of Urology,
+Volume 173, Issue 2,
+2005,
+Pages 503-506,
+ISSN 0022-5347
 \end{thebibliography}
 \newpage
 \end{document}
